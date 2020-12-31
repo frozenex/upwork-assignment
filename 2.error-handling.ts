@@ -1,66 +1,25 @@
 /**
+ * I think we can use the go-lang way of error handling
  * References
- * - https://iaincollins.medium.com/error-handling-in-javascript-a6172ccdf9af
- * - https://docs.nestjs.com/exception-filters#custom-exceptions
+ * - https://5error.com/go-style-error-handling-in-javascript/
  */
 
-enum HttpStatus {
-    BAD_REQUEST = 400,
-    INTERNAL_SERVER_ERROR = 500
-    // ...etc
-}
+const successFn = (): Promise<string> => new Promise<string>((resolve, reject) => resolve('It works!'));
+const failureFn = (): Promise<string> => new Promise<string>((resolve, reject) => reject(new Error('Oops, i failed!')));
 
-class HttpException extends Error {
-
-    constructor(private readonly response: string | Record<string, any>,
-                private readonly status: number) {
-        super();
-        if (typeof response === 'string') {
-            this.message = response;
-        } else if (typeof response === 'object' && 
-                   typeof (this.response as Record<string, any>).message === 'string') {
-            this.message = (this.response as Record<string, any>).message;
-        } else {
-            this.message = this.constructor.name;
-        }
-    }
-
-    public getResponse(): string | object {
-        return this.response;
-    }
-    
-    public getStatus(): number {
-        return this.status;
+async function safeError(promise: Promise<any>): Promise<[Error, any]> {
+    try {
+        return [null, await promise];
+    } catch (err) {
+        return [err, null];
     }
 }
 
-class BadRequestException extends HttpException {
-
-    constructor(objectOrError?: string | object | any, description: string = 'Forbidden') {
-        super((objectOrError && (typeof objectOrError === 'object' && !Array.isArray(objectOrError))) ? objectOrError : { 
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: objectOrError || description,
-                error: objectOrError ? description : undefined,
-            }, 
-            HttpStatus.BAD_REQUEST);
+(async () => {
+    const [err, data] = await safeError(failureFn());
+    if (err) {
+        console.log(err.message);
+    } else {
+        console.log(data);
     }
-}
-
-class InternalServerErrorException extends HttpException {
-
-    constructor(objectOrError?: string | object | any, description: string = 'Internal Server Error') {
-        super((objectOrError && (typeof objectOrError === 'object' && !Array.isArray(objectOrError))) ? objectOrError : { 
-                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                message: objectOrError || description,
-                error: objectOrError ? description : undefined,
-            }, 
-            HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-}
-
-function validate(param: string): string {
-    if (!param) throw new BadRequestException('Invalid request params');
-    return param;
- }
-
-validate(null);
+})();
